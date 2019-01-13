@@ -3,31 +3,28 @@ import 'package:meta/meta.dart';
 import 'package:flutter/material.dart';
 
 class Stickman extends StatefulWidget {
+  final AnimationController animationController;
+
+  const Stickman({Key key, this.animationController}) : super(key: key); 
+
   @override
   State<StatefulWidget> createState() {
-    return _StickmanState();
+    return _StickmanState(animationController);
   }
 }
 
 class _StickmanState extends State<Stickman>
     with SingleTickerProviderStateMixin {
-  AnimationController aController;
+  final AnimationController aController;
+
+  _StickmanState(this.aController);
 
   @override
   void initState() {
     super.initState();
-    aController =
-        AnimationController(vsync: this, duration: Duration(seconds: 30));
-    aController.repeat();
     aController.addListener(() {
       setState(() {});
     });
-  }
-
-  @override
-  void dispose() {
-    aController.dispose();
-    super.dispose();
   }
 
   @override
@@ -39,6 +36,8 @@ class _StickmanState extends State<Stickman>
 class _PathCalculator {
   final List<double> footStagesX;
   final List<double> kneeStagesX;
+  List<double> footStagesY;
+  List<double> kneeStagesY;
   final Point hip;
   final double partLength;
   final List<int> kneeFootDirectionUpIndexes;
@@ -51,7 +50,23 @@ class _PathCalculator {
       @required this.kneeStagesX,
       @required this.hip,
       @required this.partLength,
-      @required this.kneeFootDirectionUpIndexes});
+      @required this.kneeFootDirectionUpIndexes}) {
+    assert(footStagesX.length == kneeStagesX.length);
+    this.kneeStagesY = List.generate(
+        footStagesX.length,
+        (index) => _getTargetY(
+            sourceX: hip.x,
+            sourceY: hip.y,
+            targetX: kneeStagesX[index],
+            upwards: false));
+    this.footStagesY = List.generate(
+        footStagesX.length,
+        (index) => _getTargetY(
+            sourceX: kneeStagesX[index],
+            sourceY: kneeStagesY[index],
+            targetX: footStagesX[index],
+            upwards: kneeFootDirectionUpIndexes.contains(index)));
+  }
 
   double _getTargetY(
       {@required double sourceX,
@@ -79,26 +94,18 @@ class _PathCalculator {
         footStagesX[(stage + 1) % footStagesX.length], stageProgress);
     double stageKneeX = lerp(kneeStagesX[stage],
         kneeStagesX[(stage + 1) % footStagesX.length], stageProgress);
+    double stageFootY = lerp(footStagesY[stage],
+        footStagesY[(stage + 1) % footStagesX.length], stageProgress);
+    double stageKneeY = lerp(kneeStagesY[stage],
+        kneeStagesY[(stage + 1) % footStagesX.length], stageProgress);
     double mirrorFootX = lerp(footStagesX[mirror],
         footStagesX[(mirror + 1) % footStagesX.length], stageProgress);
     double mirrorKneeX = lerp(kneeStagesX[mirror],
         kneeStagesX[(mirror + 1) % footStagesX.length], stageProgress);
-
-    final stageKneeY = _getTargetY(
-        sourceX: hip.x, sourceY: hip.y, targetX: stageKneeX, upwards: false);
-    final stageFootY = _getTargetY(
-        sourceX: stageKneeX,
-        sourceY: stageKneeY,
-        targetX: stageFootX,
-        upwards: kneeFootDirectionUpIndexes.contains(stage));
-
-    final mirrorKneeY = _getTargetY(
-        sourceX: hip.x, sourceY: hip.y, targetX: mirrorKneeX, upwards: false);
-    final mirrorFootY = _getTargetY(
-        sourceX: mirrorKneeX,
-        sourceY: mirrorKneeY,
-        targetX: mirrorFootX,
-        upwards: kneeFootDirectionUpIndexes.contains(mirror));
+    double mirrorFootY = lerp(footStagesY[mirror],
+        footStagesY[(mirror + 1) % footStagesX.length], stageProgress);
+    double mirrorKneeY = lerp(kneeStagesY[mirror],
+        kneeStagesY[(mirror + 1) % footStagesX.length], stageProgress);
 
     return [
       Point(stageFootX, stageFootY),
@@ -120,7 +127,7 @@ class StickmanPainter extends CustomPainter {
       .471,
       .557,
       .621,
-      .629,
+      .700,
       .769,
       .764,
       .750,
@@ -234,7 +241,7 @@ class StickmanPainter extends CustomPainter {
       ..color = Colors.black45
       ..style = PaintingStyle.stroke
       ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.butt
+      ..strokeCap = StrokeCap.round
       ..strokeWidth = 0.093 * s;
     List<Point> legPoints = legCalculator.getPointsForProgress(progress);
     List<Point> armPoints = armCalculator.getPointsForProgress(progress);
@@ -243,8 +250,8 @@ class StickmanPainter extends CustomPainter {
       ..drawPath(_pointsToPath(legPoints, s), _paint)
       ..drawPath(_pointsToPath(armPoints, s), _paint)
       ..drawCircle(
-          Offset(.571 * s, .1 * s),
-          .093 * s,
+          Offset(.581 * s, .093 * s),
+          .073 * s,
           Paint()
             ..color = Colors.black45
             ..style = PaintingStyle.fill);

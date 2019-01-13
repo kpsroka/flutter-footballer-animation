@@ -26,18 +26,35 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage>
+    with SingleTickerProviderStateMixin {
   bool _isPaused = true;
+  AnimationController animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    animationController =
+        AnimationController(vsync: this, duration: Duration(seconds: 2));
+  }
+
+  @override
+  dispose() {
+    animationController.dispose();
+    super.dispose();
+  }
 
   void _pause() {
     setState(() {
       _isPaused = true;
+      animationController.stop();
     });
   }
 
   void _run() {
     setState(() {
       _isPaused = false;
+      animationController.repeat();
     });
   }
 
@@ -51,9 +68,10 @@ class _MyHomePageState extends State<MyHomePage> {
             SizedBox(
               width: 100,
               height: 150,
-              child: Stickman(),
+              child: Stickman(animationController: animationController),
             ),
-            Icon(Icons.directions_run, color: Colors.purple.withAlpha(127)),
+            Icon(_isPaused ? Icons.directions_walk : Icons.directions_run,
+                color: Colors.purple.withAlpha(127)),
             Text(_isPaused ? "paused" : "running"),
           ],
         ),

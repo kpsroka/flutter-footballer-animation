@@ -85,6 +85,8 @@ class _PathCalculator {
 }
 
 class StickmanPainter extends CustomPainter {
+  static const BALL_PARABOLA_HEIGHT_RATE = 1 / 5;
+
   static _PathCalculator legPointCalculator = _PathCalculator.fromPoints(
     footStages: [
       Point(0.243, 0.678),
@@ -196,6 +198,21 @@ class StickmanPainter extends CustomPainter {
     return path;
   }
 
+  double _ballY(double progress, double amplitude) {
+    if (progress == 0.0 || progress == 1.0) {
+      return 0.0;
+    }
+
+    final double b = BALL_PARABOLA_HEIGHT_RATE;
+    final int i = (2 * log(1 - progress) / log(b)).ceil();
+    final double dI = (1 - sqrt(b)) * pow(b, (i - 1) / 2);
+    final double sI = 1 - pow(b, (i - 1) / 2);
+    return (pow(progress - sI - dI / 2, 2) - pow(dI / 2, 2)) *
+        -2 *
+        amplitude /
+        dI;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final progress = aController == null ? 0.0 : aController.value;
@@ -211,15 +228,21 @@ class StickmanPainter extends CustomPainter {
     List<Point> legPoints = legPointCalculator.getPointsForProgress(progress);
     List<Point> armPoints = armPointCalculator.getPointsForProgress(progress);
 
+    double ballY = _ballY(progress, s);
+    double ballX = pow(progress - 1/2, 2) - 1/4;
+
+    Paint dotPaint = Paint()
+            ..color = Colors.black45
+            ..style = PaintingStyle.fill;
+
     canvas
       ..drawPath(_pointsToPath(legPoints, s), _paint)
       ..drawPath(_pointsToPath(armPoints, s), _paint)
       ..drawCircle(
           Offset(.581 * s, .093 * s),
           .073 * s,
-          Paint()
-            ..color = Colors.black45
-            ..style = PaintingStyle.fill);
+          dotPaint)
+      ..drawCircle(Offset((.87 - ballX) * s, (0.85 * s) - ballY), .073 * s, dotPaint);
   }
 
   @override
